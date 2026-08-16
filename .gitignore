@@ -1,0 +1,52 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+*.egg
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/build/
+*.local
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ── ML Dataset & Training Outputs ────────────────────────────────────────────
+# These are large and should be downloaded/generated locally, not committed
+data/
+runs/
+results/
+
+# Commit models/ folder but NOT the weight files (they're large binary files)
+models/*.pt
+models/*.onnx
+models/*.engine
+# Keep the .gitkeep so the folder is tracked
+!models/.gitkeep
+
+# ── Application Logs & Runtime Snapshots ──────────────────────────────────────
+# Snapshot images are generated at runtime, track the folder but not contents
+logs/snapshots/*
+!logs/snapshots/.gitkeep
+logs/*.log
+
+# ── IDE & OS Files ────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+desktop.ini

@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+opencv-python
+ultralytics
+pymongo
+python-dotenv
+numpy
+pillow
+roboflow
+pyyaml
+shapely
