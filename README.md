@@ -207,3 +207,23 @@ You can schedule this with cron:
 0 3 * * * /path/to/backend/venv/bin/python /path/to/scripts/cleanup_snapshots.py
 ```
 # AI-Powered_Safety_Monitoring_System
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+./start.sh
+
+
+cd "backend"
+source venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+
+
+
+cd "frontend"
+npm run dev -- --port 3000
+
+
+
+lsof -ti:8000,3000 | xargs kill -9
