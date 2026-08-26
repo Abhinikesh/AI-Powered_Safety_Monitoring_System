@@ -6,7 +6,6 @@
   width: 100%;
 }
 
-/* ── Fetch Error Banner ────────────────────────────────────────────────────── */
 .fetch-error-banner {
   display: flex;
   align-items: center;
