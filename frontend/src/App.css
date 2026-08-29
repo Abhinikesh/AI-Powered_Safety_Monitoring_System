@@ -164,7 +164,6 @@ body {
   margin: 0 auto;
 }
 
-/* ── Responsive Adjustments ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .navbar-container {
     padding: 0.7rem 1rem;
