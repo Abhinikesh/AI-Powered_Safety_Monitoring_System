@@ -37,7 +37,6 @@ async def detect_image(
     if img is None:
         raise HTTPException(status_code=400, detail="Failed to decode the image. Make sure the frame is valid JPEG or PNG.")
 
-    # Parse zone polygon coordinates if provided from the frontend
     zone_points = None
     if zone:
         try:
