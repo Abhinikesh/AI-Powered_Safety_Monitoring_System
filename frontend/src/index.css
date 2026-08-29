@@ -8,7 +8,6 @@ html, body, #root {
   min-height: 100vh;
 }
 
-/* Prevent horizontal overflow on small screens */
 body {
   overflow-x: hidden;
 }
