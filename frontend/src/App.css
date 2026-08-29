@@ -24,7 +24,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── App Shell ─────────────────────────────────────────────────────────────── */
 .app-shell {
   display: flex;
   flex-direction: column;
