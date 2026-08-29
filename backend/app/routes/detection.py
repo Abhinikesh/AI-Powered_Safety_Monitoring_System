@@ -47,7 +47,6 @@ async def detect_image(
         except Exception as e:
             print(f"Warning: Could not parse zone coordinates: {e}")
 
-    # Clamp threshold to a valid range; fall back to default if out of bounds
     if threshold is None or not (0.01 <= threshold <= 0.99):
         threshold = 0.5
 
