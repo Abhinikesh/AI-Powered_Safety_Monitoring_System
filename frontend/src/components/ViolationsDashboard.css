@@ -311,7 +311,6 @@ tbody tr:hover {
   font-style: italic;
 }
 
-/* ── Violation Type Badge ──────────────────────────────────────────────────── */
 .badge-type {
   display: inline-flex;
   align-items: center;
