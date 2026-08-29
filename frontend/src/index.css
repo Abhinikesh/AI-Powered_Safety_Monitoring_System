@@ -36,7 +36,6 @@ body {
   border-radius: 4px;
 }
 
-/* Make images and canvas elements not exceed their containers */
 img, canvas {
   max-width: 100%;
 }
