@@ -30,7 +30,6 @@ body {
   min-height: 100vh;
 }
 
-/* ── Navigation Bar ────────────────────────────────────────────────────────── */
 .navbar {
   background: rgba(17, 23, 38, 0.95);
   border-bottom: 1px solid #1a2540;
