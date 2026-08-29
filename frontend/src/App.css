@@ -177,7 +177,7 @@ body {
   }
 
   .system-status-indicator {
-    display: none; /* Hide on small screens to save space */
+    display: none; 
   }
 
   .main-content {
