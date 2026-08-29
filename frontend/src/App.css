@@ -121,7 +121,6 @@ body {
   border: 1px solid #334155;
 }
 
-/* System Online Indicator */
 .system-status-indicator {
   display: flex;
   align-items: center;
