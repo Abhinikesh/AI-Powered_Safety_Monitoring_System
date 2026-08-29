@@ -210,7 +210,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Empty State ───────────────────────────────────────────────────────────── */
 .empty-state {
   display: flex;
   flex-direction: column;
