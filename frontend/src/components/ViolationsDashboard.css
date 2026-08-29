@@ -343,7 +343,6 @@ tbody tr:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .chart-card,
   .table-card {
