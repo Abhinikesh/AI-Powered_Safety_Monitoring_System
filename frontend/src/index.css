@@ -30,7 +30,6 @@ body {
   background: #334155;
 }
 
-/* Remove default focus outline and replace with better one */
 :focus-visible {
   outline: 2px solid rgba(99, 102, 241, 0.7);
   outline-offset: 2px;
