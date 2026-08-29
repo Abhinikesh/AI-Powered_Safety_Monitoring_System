@@ -12,7 +12,6 @@ from app.models.violation import make_violation
 
 router = APIRouter()
 
-# Snapshot directory is always relative to the project root — two levels up from backend/app/routes/
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "logs" / "snapshots"
 SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
