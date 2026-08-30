@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SafeGuard AI — Demo Day Startup Script
+# SafeGuard AI — Startup Script
 # Starts the FastAPI backend and React frontend in separate background processes.
 # Press Ctrl+C to stop both.
 

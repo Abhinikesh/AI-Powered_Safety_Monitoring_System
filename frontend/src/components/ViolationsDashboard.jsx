@@ -169,11 +169,12 @@ export default function ViolationsDashboard() {
               aria-label="Filter by violation type"
             >
               <option value="all">All Types</option>
-              <option value="no-helmet">no-helmet</option>
-              <option value="no-vest">no-vest</option>
-              <option value="restricted-zone-entry">restricted-zone-entry</option>
               <option value="NO-Hardhat">NO-Hardhat</option>
               <option value="NO-Safety Vest">NO-Safety Vest</option>
+              <option value="NO-Mask">NO-Mask</option>
+              <option value="restricted-zone-entry">restricted-zone-entry</option>
+              <option value="no-helmet">no-helmet</option>
+              <option value="no-vest">no-vest</option>
             </select>
 
             <input

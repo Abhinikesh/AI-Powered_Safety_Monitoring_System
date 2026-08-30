@@ -40,8 +40,6 @@ def train_ppe_model():
     # batch=8: conservative batch size to prevent Out-Of-Memory (OOM) errors on consumer hardware
     # patience=10: early stopping trigger if validation mAP doesn't improve for 10 epochs
     epochs = 20 if device == "cpu" else 50
-    
-    # TODO: add command line arguments (argparse) to customize epochs and batch size easily
     print(f"Starting training for {epochs} epochs on dataset: {DATA_YAML}...")
     
     results = model.train(
@@ -65,8 +63,6 @@ def train_ppe_model():
     if best_weights.exists():
         shutil.copy(best_weights, target_weights)
         print(f"✓ Saved best model weights to: {target_weights}")
-
-    # TODO: add automated model export to ONNX format for faster CPU inference later
 
     # Copy evaluation artifacts (confusion matrix, PR curve, val predictions) to results/
     artifact_files = [
