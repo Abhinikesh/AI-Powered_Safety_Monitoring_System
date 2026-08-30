@@ -1,8 +1,8 @@
 # AI-Powered Safety Monitoring System
 
-An end-to-end computer vision web application for real-time **PPE compliance monitoring** and **restricted zone enforcement** in industrial settings. Built as a college internship project using YOLOv8, FastAPI, React, and MongoDB.
+An end-to-end computer vision web application for real-time **PPE compliance monitoring** (detecting helmets and safety vests) and dynamic **restricted hazard zone enforcement** in industrial, manufacturing, and construction settings. Built with fine-tuned YOLOv8, a high-performance FastAPI backend, an interactive React dashboard, and MongoDB for incident logging.
 
-The system uses a webcam feed to detect whether workers are wearing helmets and safety vests. When a violation is detected, it logs it with a snapshot image, plays an audio alert, and shows it on a live analytics dashboard — all without any manual intervention.
+The system uses a live video feed to detect whether personnel are wearing required safety gear (helmets and vests) and enforces custom exclusion boundaries. When a non-compliance incident or unauthorized zone entry is detected, it logs the event with a timestamped snapshot image, triggers immediate visual and audio alerts, and updates a live security analytics dashboard.
 
 ---
 
@@ -162,14 +162,15 @@ AI-Powered Safety Monitoring System/
 ├── scripts/
 │   ├── download_dataset.py          ← Roboflow dataset downloader
 │   ├── train_model.py               ← YOLOv8 fine-tuning script
-│   ├── generate_report_metrics.py   ← Generates model_metrics.md
-│   └── cleanup_snapshots.py         ← Deletes snapshots older than 7 days
+│   ├── cleanup_snapshots.py         ← Deletes snapshots older than 7 days
+│   └── reporting/
+│       └── generate_report_metrics.py ← Generates model_metrics.md in docs/
 ├── data/                            ← PPE dataset (gitignored, download locally)
 ├── models/
 │   └── best.pt                      ← Trained weights (gitignored, generate via training)
 ├── logs/
 │   └── snapshots/                   ← Violation snapshot images (gitignored, runtime)
-├── report_assets/                   ← Documentation for internship report
+├── docs/                            ← Architecture diagrams, schemas, and metrics
 ├── start.sh                         ← One-command demo launcher
 └── README.md
 ```
@@ -178,7 +179,7 @@ AI-Powered Safety Monitoring System/
 
 ## Known Limitations
 
-These are honest limitations documented for the internship report:
+These are documented architectural trade-offs and known limitations:
 
 1. **1-second frame polling** — The frontend sends a JPEG frame every second via HTTP POST rather than streaming via WebSocket/WebRTC. This reduces server load but introduces ~1s latency. True real-time streaming would require WebSockets or a dedicated streaming server.
 
@@ -206,24 +207,23 @@ You can schedule this with cron:
 # Add to crontab: run cleanup every day at 3am
 0 3 * * * /path/to/backend/venv/bin/python /path/to/scripts/cleanup_snapshots.py
 ```
-# AI-Powered_Safety_Monitoring_System
+---
 
+## Quick Command Reference
 
-
-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+```bash
+# Start both backend and frontend together:
 ./start.sh
 
-
-cd "backend"
+# Or start Backend individually:
+cd backend
 source venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-
-
-
-cd "frontend"
+# Or start Frontend individually:
+cd frontend
 npm run dev -- --port 3000
 
-
-
+# Kill running processes if ports get stuck:
 lsof -ti:8000,3000 | xargs kill -9
+```

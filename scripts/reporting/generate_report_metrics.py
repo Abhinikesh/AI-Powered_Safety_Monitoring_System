@@ -1,9 +1,14 @@
 import os
+import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent
-REPORT_DIR = PROJECT_ROOT / "report_assets"
+# Project root is 3 levels up from scripts/reporting/
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+REPORT_DIR = PROJECT_ROOT / "docs"
 REPORT_DIR.mkdir(exist_ok=True)
+
+# Add backend directory to sys.path if backend imports are needed
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
 
 def generate_metrics_doc():
