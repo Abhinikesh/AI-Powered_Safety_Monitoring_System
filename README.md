@@ -1,8 +1,8 @@
 # AI-Powered Safety Monitoring System
 
-An end-to-end computer vision web application for real-time **PPE compliance monitoring** (detecting helmets and safety vests) and dynamic **restricted hazard zone enforcement** in industrial, manufacturing, and construction settings. Built with fine-tuned YOLOv8, a high-performance FastAPI backend, an interactive React dashboard, and MongoDB for incident logging.
+An end-to-end computer vision web application for real-time **PPE compliance monitoring** (detecting hardhats, safety vests, and masks) and dynamic **restricted hazard zone enforcement** in industrial, manufacturing, and construction settings. Built with fine-tuned YOLOv8, a high-performance FastAPI backend, an interactive React dashboard, and MongoDB for incident logging.
 
-The system uses a live video feed to detect whether personnel are wearing required safety gear (helmets and vests) and enforces custom exclusion boundaries. When a non-compliance incident or unauthorized zone entry is detected, it logs the event with a timestamped snapshot image, triggers immediate visual and audio alerts, and updates a live security analytics dashboard.
+The system uses a live video feed to detect whether personnel are wearing required safety gear (Hardhats, Safety Vests, Masks) and enforces custom exclusion boundaries. When a non-compliance incident or unauthorized zone entry is detected, it logs the event with a timestamped snapshot image, triggers immediate visual and audio alerts, and updates a live security analytics dashboard.
 
 ---
 
@@ -11,6 +11,7 @@ The system uses a live video feed to detect whether personnel are wearing requir
 | Layer | Technology |
 |---|---|
 | Object Detection | YOLOv8 Nano (Ultralytics) |
+| Dataset Source | Roboflow Universe (`construction-site-safety`) |
 | Backend API | Python 3.9+, FastAPI, Uvicorn |
 | Database | MongoDB (PyMongo — no ORM) |
 | Frontend UI | React 19 (Vite), Recharts, HTML5 Canvas |
@@ -47,11 +48,11 @@ cd "AI-Powered Safety Monitoring System"
 cp backend/.env.example backend/.env
 ```
 
-Open `backend/.env` and set your MongoDB URI:
+Open `backend/.env` and set your MongoDB URI and optional Roboflow API key:
 
 ```env
 MONGO_URI=mongodb://localhost:27017/safety_monitoring
-ROBOFLOW_API_KEY=your_key_here   # only needed for dataset download
+ROBOFLOW_API_KEY=your_key_here   # for dataset download from Roboflow Universe
 ```
 
 ### Step 3 — Set up the Python backend
@@ -102,32 +103,46 @@ This starts both the backend and frontend in the background. Press `Ctrl+C` to s
 
 ---
 
-## Dataset Download & Model Training
+## Dataset & Model Training
 
-### Download the PPE dataset
+### Construction Site Safety Dataset
 
-The model was trained on a Roboflow PPE dataset. To download it:
+The model is trained on the **Construction Site Safety** dataset from Roboflow Universe (`roboflow-universe-projects/construction-site-safety`), containing **2,800+ annotated industrial images** across 10 classes:
 
-1. Get a free API key from [roboflow.com](https://app.roboflow.com)
+| Class Name | Type / Role |
+| :--- | :--- |
+| `Hardhat` | Compliant PPE |
+| `Mask` | Compliant PPE |
+| `NO-Hardhat` | ⚠️ Safety Violation |
+| `NO-Mask` | ⚠️ Safety Violation |
+| `NO-Safety Vest` | ⚠️ Safety Violation |
+| `Person` | Worker entity for restricted zone intrusion detection |
+| `Safety Vest` | Compliant PPE |
+| `Safety Cone` | Site marker (ignored for violations) |
+| `machinery` | Heavy machinery (ignored for PPE violations) |
+| `vehicle` | Construction vehicles (ignored for PPE violations) |
+
+### Download the Dataset
+
+1. Get a free API key from [roboflow.com](https://app.roboflow.com) (Account > Roboflow Keys)
 2. Add it to `backend/.env`: `ROBOFLOW_API_KEY=your_key`
 3. Run:
 
 ```bash
-# From the project root, using the backend venv Python
 backend/venv/bin/python scripts/download_dataset.py
 ```
 
-This saves the dataset into `data/` with `train/`, `valid/`, `test/` splits.
+This exports the dataset into `data/` with `train/`, `valid/`, and `test/` splits along with `data.yaml`.
 
-### Train the YOLOv8 model
+### Train the YOLOv8 Model
 
 ```bash
 backend/venv/bin/python scripts/train_model.py
 ```
 
-The script automatically detects if you have a GPU. On CPU, it reduces to 20 epochs and warns you this will be slow (30–90 minutes). The trained weights are saved to `models/best.pt` automatically.
-
-**Tip:** If training locally is too slow, upload your `data/` folder to Google Colab and run the same script with a free T4 GPU — it'll finish in under 10 minutes.
+* **GPU Training**: If an NVIDIA CUDA GPU or Apple Silicon MPS is detected, training runs for 50 epochs.
+* **CPU Warning**: On standard CPU, the 2,800+ image dataset will take several hours. The script automatically clamps epochs to 20 for test runs.
+* **Recommended Free GPU (Google Colab)**: Upload the `data/` folder and `scripts/train_model.py` to Google Colab, select **Runtime > Change runtime type > T4 GPU**, and training will finish in ~10–15 minutes. Best weights are saved to `models/best.pt`.
 
 ---
 
@@ -145,8 +160,8 @@ AI-Powered Safety Monitoring System/
 │   │   │   ├── detection.py     ← POST /detect — runs inference, logs violations
 │   │   │   └── violations.py    ← GET /violations, /stats, /today
 │   │   └── services/
-│   │       ├── detection_service.py  ← YOLO model loader, detect_ppe(), check_violations()
-│   │       └── violation_service.py  ← MongoDB CRUD, logging cooldown
+│   │       ├── detection_service.py  ← YOLO loader, detect_ppe(), check_violations()
+│   │       └── violation_service.py  ← MongoDB CRUD, 3s logging cooldown
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
@@ -160,12 +175,12 @@ AI-Powered Safety Monitoring System/
 │   │   └── alert.wav               ← Audio alert sound
 │   └── package.json
 ├── scripts/
-│   ├── download_dataset.py          ← Roboflow dataset downloader
+│   ├── download_dataset.py          ← Roboflow Construction Site Safety downloader
 │   ├── train_model.py               ← YOLOv8 fine-tuning script
 │   ├── cleanup_snapshots.py         ← Deletes snapshots older than 7 days
 │   └── reporting/
 │       └── generate_report_metrics.py ← Generates model_metrics.md in docs/
-├── data/                            ← PPE dataset (gitignored, download locally)
+├── data/                            ← Construction Site Safety dataset & data.yaml
 ├── models/
 │   └── best.pt                      ← Trained weights (gitignored, generate via training)
 ├── logs/
@@ -187,7 +202,7 @@ These are documented architectural trade-offs and known limitations:
 
 3. **Snapshot storage growth** — Snapshots accumulate in `logs/snapshots/` with no automatic cleanup by default. Run `scripts/cleanup_snapshots.py` manually or schedule it as a cron job to delete files older than 7 days.
 
-4. **CPU training is slow** — YOLOv8 training on CPU takes 30–90 minutes even at 20 epochs. A GPU (or free Google Colab T4) reduces this to under 10 minutes.
+4. **CPU training is slow** — YOLOv8 training on CPU takes significant time on large datasets. A GPU (or free Google Colab T4) reduces this to ~10–15 minutes.
 
 5. **No user authentication** — The API has no auth layer; anyone who can reach port 8000 can access it. For production use, add an API key or JWT auth middleware.
 
@@ -207,6 +222,7 @@ You can schedule this with cron:
 # Add to crontab: run cleanup every day at 3am
 0 3 * * * /path/to/backend/venv/bin/python /path/to/scripts/cleanup_snapshots.py
 ```
+
 ---
 
 ## Quick Command Reference

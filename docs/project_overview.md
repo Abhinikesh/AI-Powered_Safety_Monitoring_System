@@ -1,17 +1,37 @@
-# AI-Powered Safety Monitoring System — Project Overview & Report Summary
+# AI-Powered Safety Monitoring System — Project Overview & Technical Report
 
 ## 📌 Problem Statement
-In industrial environments, construction sites, and manufacturing plants, non-compliance with Personal Protective Equipment (PPE) regulations (such as failing to wear hardhats or safety vests) and unauthorized entry into hazardous machinery zones are leading causes of workplace injuries and fatalities. Manual monitoring by safety supervisors is prone to human error, fatigue, and limited coverage.
+In industrial environments, construction sites, and manufacturing plants, non-compliance with Personal Protective Equipment (PPE) regulations (such as failing to wear hardhats, safety vests, or protective masks) and unauthorized entry into hazardous machinery zones are leading causes of workplace injuries and fatalities. Manual monitoring by safety supervisors is prone to human error, fatigue, and limited spatial coverage.
 
 An automated, computer-vision-based safety monitoring system provides continuous 24/7 surveillance, instantly detecting non-compliance and hazardous zone breaches to enforce safety protocols proactively.
 
 ---
 
 ## 🎯 Project Objectives
-1. **Real-time PPE Compliance Detection**: Automatically identify whether workers are wearing required safety gear (helmets, vests).
+1. **Real-time PPE Compliance Detection**: Automatically identify whether workers are wearing required safety gear (`Hardhat`, `Safety Vest`, `Mask`).
 2. **Restricted Zone Monitoring**: Allow operators to dynamically draw virtual boundaries and detect unauthorized human entry into dangerous areas.
 3. **Automated Incident Logging**: Persist violation records with timestamped snapshot images into MongoDB for compliance auditing.
 4. **Interactive Command Dashboard**: Provide safety officers with a live webcam stream overlay, visual/audio alerts, and analytical breakdown charts.
+
+---
+
+## 📦 Dataset: Construction Site Safety (Roboflow Universe)
+
+* **Source**: [Roboflow Universe — Construction Site Safety](https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety)
+* **Workspace**: `roboflow-universe-projects`
+* **Project**: `construction-site-safety`
+* **Dataset Volume**: 2,800+ annotated industrial images partitioned into standard `train`, `valid`, and `test` splits.
+* **Class Ontology (10 Classes)**:
+  1. `Hardhat` — Compliant head protection
+  2. `Mask` — Compliant respiratory protection
+  3. `NO-Hardhat` — ⚠️ Non-compliance violation
+  4. `NO-Mask` — ⚠️ Non-compliance violation
+  5. `NO-Safety Vest` — ⚠️ Non-compliance violation
+  6. `Person` — Worker entity used for zone intrusion tracking
+  7. `Safety Cone` — Contextual site marker (ignored for violations)
+  8. `Safety Vest` — Compliant high-visibility vest
+  9. `machinery` — Heavy equipment (ignored for PPE violations)
+  10. `vehicle` — Site vehicles (ignored for PPE violations)
 
 ---
 
@@ -29,7 +49,7 @@ An automated, computer-vision-based safety monitoring system provides continuous
 
 ## ✨ Key Features Implemented
 
-1. **Live Camera Stream & Object Detection**: Real-time 1-second interval frame processing with bounding box overlays (green for compliant, red for PPE violation).
+1. **Live Camera Stream & Object Detection**: Real-time 1-second interval frame processing with bounding box overlays (green for compliant, red for PPE violation, orange for zone entry).
 2. **Dynamic 4-Point Restricted Zone Editor**: Interactive canvas selection allowing users to define custom polygonal exclusion zones with Ray Casting point-in-polygon entry detection.
 3. **Configurable Confidence Threshold**: Real-time slider control (10% - 95%) adjusting detection sensitivity dynamically on the backend.
 4. **Rate-Limited Rate & Snapshot Logging**: Enforces a 3-second logging cooldown per violation category to prevent database flooding during continuous breaches.
@@ -42,7 +62,7 @@ An automated, computer-vision-based safety monitoring system provides continuous
 
 ### 1. Balancing Real-Time Detection vs. Server Load
 * **Challenge**: Streaming raw 60 FPS video directly to an AI backend causes high CPU utilization and network congestion.
-* **Solution**: Implemented an client-side 1-second interval frame sampling model using offscreen HTML5 canvas encoding, maintaining high responsiveness while reducing server workload by 98%.
+* **Solution**: Implemented a client-side 1-second interval frame sampling model using offscreen HTML5 canvas encoding, maintaining high responsiveness while reducing server workload by 98%.
 
 ### 2. Database Flooding During Prolonged Violations
 * **Challenge**: When a worker stands in front of the camera without a helmet for 1 minute, sending 60 frames would create 60 duplicate MongoDB records and snapshot files.

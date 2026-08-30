@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 
-# Fix: backend/app/services/ -> .parent.parent.parent = backend/ -> .parent = project root
+# backend/app/services/ -> .parent.parent.parent = backend/ -> .parent = project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MODEL_PATH = PROJECT_ROOT / "models" / "best.pt"
 FALLBACK_MODEL = "yolov8n.pt"
@@ -98,13 +98,13 @@ def check_violations(
     threshold: float = CONFIDENCE_THRESHOLD,
     zone_points: list = None
 ) -> list:
-    """Filter the raw detections list to identify PPE violations and restricted zone entries.
+    """Filter raw detections to identify PPE violations and restricted zone entries.
 
-    Violation logic:
-    - Any class whose name starts with 'no-' or 'NO-' is treated as a PPE violation if its
-      confidence meets or exceeds the threshold.
-    - If zone_points is provided and a 'person' detection's center falls inside the zone,
-      a 'restricted-zone-entry' violation is appended.
+    Supported dataset classes:
+    - PPE Violations: 'NO-Hardhat', 'NO-Safety Vest', 'NO-Mask', 'no-helmet', 'no-vest'
+    - Compliant PPE (not violations): 'Hardhat', 'Safety Vest', 'Mask', 'helmet', 'vest'
+    - Site Objects (ignored for violations): 'machinery', 'vehicle', 'Safety Cone'
+    - Person tracking: 'Person' or 'person' checked against zone_points polygon for zone entry breaches.
 
     Args:
         detections: Raw list from detect_ppe()
@@ -116,21 +116,33 @@ def check_violations(
     """
     violations = []
 
-    # Canonical PPE violation class names — covers both custom-trained and base model classes
-    violation_class_set = {
-        "no-helmet", "no-vest", "no-mask",
-        "NO-Hardhat", "NO-Safety Vest", "NO-Mask",
-        "NO-Gloves", "NO-Goggles",
+    # Explicit set of non-compliance classes across dataset variations
+    violation_classes = {
+        "NO-Hardhat",
+        "NO-Safety Vest",
+        "NO-Mask",
+        "no-helmet",
+        "no-vest",
+        "no-mask",
+        "NO-Gloves",
+        "NO-Goggles",
     }
+
+    # Classes to explicitly ignore from PPE violation logic
+    ignored_classes = {"machinery", "vehicle", "safety cone", "traffic cone"}
 
     for det in detections:
         cname = det["class_name"]
         conf = det["confidence"]
         box = det["box"]
 
-        # 1. PPE compliance check — match by set membership OR prefix convention
+        # Skip equipment and site markers
+        if cname.lower() in ignored_classes:
+            continue
+
+        # 1. PPE compliance check — match violation set or 'no-' / 'NO-' naming convention
         is_ppe_violation = (
-            cname in violation_class_set
+            cname in violation_classes
             or cname.lower().startswith("no-")
         )
         if is_ppe_violation and conf >= threshold:
