@@ -3,11 +3,7 @@ import axios from 'axios'
 import './WebcamMonitor.css'
 
 const API_URL = 'http://localhost:8000'
-// Retry interval when backend is unreachable (ms)
-const RETRY_INTERVAL_MS = 5000
-// How often to capture and send a frame (ms)
 const CAPTURE_INTERVAL_MS = 1000
-// Minimum time between alert sounds (ms)
 const ALERT_SOUND_COOLDOWN_MS = 5000
 
 export default function WebcamMonitor() {
@@ -32,7 +28,7 @@ export default function WebcamMonitor() {
   const [toast, setToast] = useState(null)
   const lastAlertTime = useRef(0)
 
-  // Keep latest values accessible inside setInterval callbacks without stale closures
+  // Keep latest values accessible inside callbacks without stale closures
   const zonePointsRef = useRef(zonePoints)
   const confidenceRef = useRef(confidenceThreshold)
   const serverErrorRef = useRef(serverError)
@@ -46,7 +42,7 @@ export default function WebcamMonitor() {
     try {
       setCamError(null)
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -65,7 +61,6 @@ export default function WebcamMonitor() {
   useEffect(() => {
     setupCamera()
     return () => {
-      // Stop all camera tracks on component unmount
       if (videoRef.current && videoRef.current.srcObject) {
         videoRef.current.srcObject.getTracks().forEach(t => t.stop())
       }
@@ -79,13 +74,10 @@ export default function WebcamMonitor() {
 
     lastAlertTime.current = now
 
-    // Play the alert sound (blocked by browsers until user interacts with the page)
     try {
       const audio = new Audio('/alert.wav')
       audio.volume = 0.6
-      audio.play().catch(() => {
-        // Autoplay blocked — common on first load, fine to ignore
-      })
+      audio.play().catch(() => {})
     } catch (_) {}
 
     const firstViol = newViolations[0]
@@ -98,7 +90,6 @@ export default function WebcamMonitor() {
       type: isZone ? 'zone' : 'ppe',
     })
 
-    // Auto-dismiss the toast after 4 seconds
     setTimeout(() => setToast(null), 4000)
   }, [])
 
@@ -133,7 +124,6 @@ export default function WebcamMonitor() {
     if (!canvas || !video) return
 
     const ctx = canvas.getContext('2d')
-    // Always sync canvas dimensions to actual video resolution
     const vw = video.videoWidth || 640
     const vh = video.videoHeight || 480
     canvas.width = vw
@@ -154,23 +144,29 @@ export default function WebcamMonitor() {
         ctx.fill()
       }
       ctx.strokeStyle = '#f97316'
-      ctx.lineWidth = 2
-      ctx.setLineDash([7, 5])
+      ctx.lineWidth = 2.5
+      ctx.setLineDash([8, 6])
       ctx.stroke()
       ctx.setLineDash([])
 
+      // Draw numbered vertex markers
       zonePoints.forEach(([px, py], idx) => {
         ctx.beginPath()
-        ctx.arc(px, py, 5, 0, 2 * Math.PI)
+        ctx.arc(px, py, 6, 0, 2 * Math.PI)
         ctx.fillStyle = '#f97316'
         ctx.fill()
-        ctx.fillStyle = '#fff'
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+
+        // Point label
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 11px Inter, sans-serif'
-        ctx.fillText(`P${idx + 1}`, px + 8, py + 4)
+        ctx.fillText(`P${idx + 1}`, px + 9, py + 4)
       })
     }
 
-    // Draw detection bounding boxes
+    // Draw detection bounding boxes with modern rounded pill labels
     detections.forEach(det => {
       const [x1, y1, x2, y2] = det.box
       const isZoneEntry = violations.some(
@@ -178,39 +174,65 @@ export default function WebcamMonitor() {
       )
       const isPPEViolation = det.class_name.toLowerCase().startsWith('no-')
 
-      let stroke = '#10b981' // green — compliant
-      let fill = 'rgba(16, 185, 129, 0.15)'
+      let stroke = '#10b981' // Green — Compliant
+      let fill = 'rgba(16, 185, 129, 0.12)'
 
       if (isZoneEntry) {
-        stroke = '#f97316' // orange — zone entry
-        fill = 'rgba(249, 115, 22, 0.2)'
+        stroke = '#f97316' // Orange — Zone Entry
+        fill = 'rgba(249, 115, 22, 0.22)'
       } else if (isPPEViolation) {
-        stroke = '#ef4444' // red — PPE violation
+        stroke = '#ef4444' // Red — Violation
         fill = 'rgba(239, 68, 68, 0.2)'
       }
 
-      // Box fill
-      ctx.fillStyle = fill
-      ctx.fillRect(x1, y1, x2 - x1, y2 - y1)
+      const boxW = x2 - x1
+      const boxH = y2 - y1
 
-      // Box border
+      // Semi-transparent box fill
+      ctx.fillStyle = fill
+      ctx.fillRect(x1, y1, boxW, boxH)
+
+      // Box outline
       ctx.strokeStyle = stroke
       ctx.lineWidth = 2.5
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1)
+      ctx.strokeRect(x1, y1, boxW, boxH)
 
       // Label text
-      const label = isZoneEntry
-        ? `⚠ ZONE ENTRY ${(det.confidence * 100).toFixed(0)}%`
+      const labelText = isZoneEntry
+        ? `ZONE ENTRY ${(det.confidence * 100).toFixed(0)}%`
         : `${det.class_name} ${(det.confidence * 100).toFixed(0)}%`
 
       ctx.font = '600 12px Inter, sans-serif'
-      const textW = ctx.measureText(label).width
-      const labelY = Math.max(0, y1 - 22)
+      const textW = ctx.measureText(labelText).width
 
+      const pillPadding = 8
+      const pillH = 22
+      const pillW = textW + pillPadding * 2 + 10
+      const pillX = x1
+      const pillY = Math.max(4, y1 - pillH - 4)
+
+      // Draw glassmorphism tag backdrop
+      ctx.beginPath()
+      if (ctx.roundRect) {
+        ctx.roundRect(pillX, pillY, pillW, pillH, 5)
+      } else {
+        ctx.rect(pillX, pillY, pillW, pillH)
+      }
+      ctx.fillStyle = 'rgba(11, 16, 28, 0.88)'
+      ctx.fill()
+      ctx.strokeStyle = stroke
+      ctx.lineWidth = 1.2
+      ctx.stroke()
+
+      // Small colored indicator circle
+      ctx.beginPath()
+      ctx.arc(pillX + 8, pillY + pillH / 2, 3.5, 0, 2 * Math.PI)
       ctx.fillStyle = stroke
-      ctx.fillRect(x1, labelY, textW + 10, 20)
-      ctx.fillStyle = '#fff'
-      ctx.fillText(label, x1 + 5, labelY + 14)
+      ctx.fill()
+
+      // Crisp label typography
+      ctx.fillStyle = '#f8fafc'
+      ctx.fillText(labelText, pillX + 16, pillY + 15)
     })
   }, [detections, violations, zonePoints])
 
@@ -250,7 +272,6 @@ export default function WebcamMonitor() {
         setViolations(resViolations)
         setHasViolation(isViol)
 
-        // Show reconnected banner when server comes back after being offline
         if (serverErrorRef.current) {
           setServerError(false)
           setReconnected(true)
@@ -287,89 +308,15 @@ export default function WebcamMonitor() {
         </div>
       )}
 
-      {/* Control Bar */}
-      <div className="control-bar">
-        <div className="status-badge-container">
-          <span className="live-dot" aria-hidden="true" />
-          <span className="live-text">LIVE MONITORING</span>
-        </div>
-
-        <div className="control-group">
-          <button
-            className="settings-toggle-btn"
-            onClick={() => setShowSettings(s => !s)}
-            aria-expanded={showSettings}
-          >
-            ⚙ Threshold ({Math.round(confidenceThreshold * 100)}%)
-          </button>
-
-          {zonePoints.length < 4 && (
-            <button
-              className={`zone-btn ${isSettingZone ? 'active' : ''}`}
-              onClick={() => setIsSettingZone(s => !s)}
-            >
-              {isSettingZone ? `Click (${zonePoints.length}/4)` : '➕ Set Zone'}
-            </button>
-          )}
-          {zonePoints.length > 0 && (
-            <button className="zone-btn clear" onClick={clearZone}>
-              ✕ Clear Zone
-            </button>
-          )}
-        </div>
-
-        <div
-          className={`compliance-indicator ${
-            hasZoneEntry ? 'zone-flash' : hasViolation ? 'violation-flash' : 'all-clear'
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          {hasZoneEntry
-            ? '🚨 PERSON IN RESTRICTED ZONE'
-            : hasViolation
-            ? '⚠ PPE VIOLATION DETECTED'
-            : '✓ ALL CLEAR'}
-        </div>
-      </div>
-
-      {/* Confidence Threshold Settings Panel */}
-      {showSettings && (
-        <div className="settings-panel">
-          <div className="setting-item">
-            <label htmlFor="threshold-slider">
-              Confidence Threshold: <strong>{(confidenceThreshold * 100).toFixed(0)}%</strong>
-            </label>
-            <input
-              id="threshold-slider"
-              type="range"
-              min="0.10"
-              max="0.95"
-              step="0.05"
-              value={confidenceThreshold}
-              onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
-            />
-            <span className="setting-desc">
-              Lower = more sensitive (more detections). Higher = stricter (fewer false alarms).
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Status Banners */}
+      {/* Reconnection / Error Notifications */}
       {reconnected && (
         <div className="error-banner success" role="status">
-          ✓ Reconnected to the backend server successfully.
+          ✓ Backend stream re-established.
         </div>
       )}
       {serverError && (
         <div className="error-banner warning" role="alert">
-          ⚠ Cannot reach the backend. Retrying automatically every 5 seconds...
-        </div>
-      )}
-      {isSettingZone && (
-        <div className="guide-banner">
-          Click {4 - zonePoints.length} more point{4 - zonePoints.length !== 1 ? 's' : ''} on the video to define your restricted zone.
+          ⚠ Backend disconnected. Retrying stream automatically every 5s...
         </div>
       )}
       {camError && (
@@ -379,19 +326,110 @@ export default function WebcamMonitor() {
         </div>
       )}
 
-      {/* Video Feed with Canvas Overlay */}
+      {/* Unified Surveillance Control Bar */}
+      <div className="control-bar">
+        <div className="control-bar-left">
+          <div className="status-badge-container">
+            <span className="live-dot" aria-hidden="true" />
+            <span className="live-text">CAM-01 LIVE</span>
+          </div>
+
+          <div className="control-divider" />
+
+          <button
+            className={`action-btn ${showSettings ? 'active' : ''}`}
+            onClick={() => setShowSettings(s => !s)}
+            aria-expanded={showSettings}
+          >
+            ⚙️ Threshold: <strong>{Math.round(confidenceThreshold * 100)}%</strong>
+          </button>
+
+          {zonePoints.length < 4 && (
+            <button
+              className={`action-btn zone ${isSettingZone ? 'active' : ''}`}
+              onClick={() => setIsSettingZone(s => !s)}
+            >
+              {isSettingZone ? `🎯 Click Vertex (${zonePoints.length}/4)` : '➕ Define Hazard Zone'}
+            </button>
+          )}
+
+          {zonePoints.length > 0 && (
+            <button className="action-btn clear" onClick={clearZone}>
+              ✕ Reset Zone
+            </button>
+          )}
+        </div>
+
+        <div className="control-bar-right">
+          <div
+            className={`compliance-indicator ${
+              hasZoneEntry ? 'zone-flash' : hasViolation ? 'violation-flash' : 'all-clear'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {hasZoneEntry
+              ? '🚨 ZONE BREACH'
+              : hasViolation
+              ? '⚠️ PPE VIOLATION'
+              : '✓ ALL CLEAR'}
+          </div>
+        </div>
+      </div>
+
+      {/* Dynamic Confidence Slider Panel */}
+      {showSettings && (
+        <div className="settings-panel">
+          <div className="setting-item">
+            <div className="setting-header">
+              <label htmlFor="threshold-slider">
+                Model Confidence Sensitivity: <strong>{(confidenceThreshold * 100).toFixed(0)}%</strong>
+              </label>
+              <span className="setting-desc">
+                Lower = More Detections | Higher = Stricter Filtering
+              </span>
+            </div>
+            <input
+              id="threshold-slider"
+              type="range"
+              min="0.10"
+              max="0.95"
+              step="0.05"
+              value={confidenceThreshold}
+              onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Main Surveillance Video Panel */}
       <div
         className={`video-wrapper ${
           hasZoneEntry ? 'has-zone' : hasViolation ? 'has-violation' : ''
         }`}
       >
+        {/* Targeting Reticle Corner Brackets */}
+        <div className="corner-bracket top-left" aria-hidden="true" />
+        <div className="corner-bracket top-right" aria-hidden="true" />
+        <div className="corner-bracket bottom-left" aria-hidden="true" />
+        <div className="corner-bracket bottom-right" aria-hidden="true" />
+
+        {/* On-Screen Display (OSD) HUD Banner for Zone Setting Mode */}
+        {isSettingZone && (
+          <div className="osd-hud-banner">
+            <span className="hud-pulse">●</span>
+            Click on video to place vertex point <strong>#{zonePoints.length + 1}</strong> of 4
+          </div>
+        )}
+
+        {/* Video Feed and HTML5 Canvas Overlay */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
           className="webcam-video"
-          aria-label="Live webcam feed"
+          aria-label="Live security video feed"
         />
         <canvas
           ref={overlayCanvasRef}
@@ -399,7 +437,6 @@ export default function WebcamMonitor() {
           onClick={handleCanvasClick}
           aria-hidden="true"
         />
-        {/* Hidden canvas for frame capture — never visible to the user */}
         <canvas ref={captureCanvasRef} style={{ display: 'none' }} />
       </div>
     </div>

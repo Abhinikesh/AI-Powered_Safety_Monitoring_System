@@ -1,19 +1,29 @@
 import { useEffect, useState, useCallback } from 'react'
 import axios from 'axios'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  CartesianGrid
+} from 'recharts'
 import './ViolationsDashboard.css'
 
 const API_URL = 'http://localhost:8000'
 
-// Color map for chart bars — consistent with the UI badge colors
+// Visual color map for violation categories
 const CHART_COLORS = {
   'no-helmet': '#ef4444',
   'no-vest': '#f59e0b',
   'restricted-zone-entry': '#f97316',
   'NO-Hardhat': '#ef4444',
   'NO-Safety Vest': '#f59e0b',
+  'NO-Mask': '#ec4899',
 }
-const DEFAULT_BAR_COLOR = '#818cf8'
+const DEFAULT_BAR_COLOR = '#6366f1'
 
 export default function ViolationsDashboard() {
   const [violations, setViolations] = useState([])
@@ -25,6 +35,9 @@ export default function ViolationsDashboard() {
   // Filter state
   const [selectedType, setSelectedType] = useState('all')
   const [selectedDate, setSelectedDate] = useState('')
+
+  // Lightbox modal state for snapshot preview
+  const [activeSnapshot, setActiveSnapshot] = useState(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -50,27 +63,26 @@ export default function ViolationsDashboard() {
     fetchData()
   }, [fetchData])
 
-  // Client-side filtering — fast enough for a dataset of this size
+  // Client-side filtering
   const filteredViolations = violations.filter(v => {
     const matchType = selectedType === 'all' || v.violation_type === selectedType
     const matchDate = !selectedDate || (v.timestamp || '').startsWith(selectedDate)
     return matchType && matchDate
   })
 
-  // Build chart data from stats object
+  // Chart data
   const chartData = Object.entries(stats).map(([name, count]) => ({ name, count }))
 
-  // Find the type with the highest count — fixed reduce bug from original
+  // Most common violation type
   const mostCommonType = chartData.length > 0
     ? chartData.reduce((best, curr) => (curr.count > best.count ? curr : best), chartData[0]).name
     : '—'
 
-  // Build snapshot URL from stored filename
+  // Construct snapshot URL
   const getSnapshotUrl = (snapshotPath) => {
     if (!snapshotPath) return ''
-    // snapshot_path stores only the filename now — directly construct URL
     const filename = snapshotPath.includes('/') || snapshotPath.includes('\\')
-      ? snapshotPath.split(/[/\\]/).pop()  // Handle legacy full-path entries
+      ? snapshotPath.split(/[/\\]/).pop()
       : snapshotPath
     return `${API_URL}/snapshots/${filename}`
   }
@@ -80,70 +92,166 @@ export default function ViolationsDashboard() {
     setSelectedDate('')
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Get icon for badge
+  const getViolationBadgeInfo = (type) => {
+    switch (type) {
+      case 'NO-Hardhat':
+      case 'no-helmet':
+        return { icon: '⛑️', label: type, className: 'badge-hardhat' }
+      case 'NO-Safety Vest':
+      case 'no-vest':
+        return { icon: '🦺', label: type, className: 'badge-vest' }
+      case 'NO-Mask':
+      case 'no-mask':
+        return { icon: '😷', label: type, className: 'badge-mask' }
+      case 'restricted-zone-entry':
+        return { icon: '🚨', label: 'Zone Breach', className: 'badge-zone' }
+      default:
+        return { icon: '⚠️', label: type || 'Violation', className: 'badge-default' }
+    }
+  }
+
   return (
     <div className="dashboard-container">
 
-      {/* Backend connection error */}
-      {fetchError && (
-        <div className="fetch-error-banner">
-          <span>⚠ Could not load dashboard data — make sure the backend is running.</span>
-          <button onClick={fetchData} className="retry-fetch-btn">Retry</button>
+      {/* Snapshot Lightbox Modal */}
+      {activeSnapshot && (
+        <div className="lightbox-overlay" onClick={() => setActiveSnapshot(null)}>
+          <div className="lightbox-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lightbox-header">
+              <div className="lightbox-title">
+                <strong>Incident Snapshot Preview</strong>
+                <span>{new Date(activeSnapshot.timestamp).toLocaleString()}</span>
+              </div>
+              <button
+                className="lightbox-close-btn"
+                onClick={() => setActiveSnapshot(null)}
+                aria-label="Close image preview"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="lightbox-body">
+              <img
+                src={getSnapshotUrl(activeSnapshot.snapshot_path)}
+                alt={`Incident: ${activeSnapshot.violation_type}`}
+                className="lightbox-img"
+              />
+            </div>
+            <div className="lightbox-footer">
+              <span className={`badge-type ${getViolationBadgeInfo(activeSnapshot.violation_type).className}`}>
+                {getViolationBadgeInfo(activeSnapshot.violation_type).icon} {activeSnapshot.violation_type}
+              </span>
+              <span className="lightbox-meta">
+                Confidence: <strong>{(activeSnapshot.confidence * 100).toFixed(1)}%</strong>
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Summary Stat Cards */}
+      {/* Backend Connection Error */}
+      {fetchError && (
+        <div className="fetch-error-banner">
+          <span>⚠️ Could not fetch incident data. Ensure the backend API is running on port 8000.</span>
+          <button onClick={fetchData} className="retry-fetch-btn">Retry Connection</button>
+        </div>
+      )}
+
+      {/* Top 3 Summary Metric Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-label">Violations Today</span>
+          <div className="stat-card-header">
+            <span className="stat-label">Violations Today</span>
+            <div className="stat-icon-wrapper calendar">🕒</div>
+          </div>
           <span className={`stat-value ${todayCount > 0 ? 'highlight' : ''}`}>
             {loading ? '—' : todayCount}
           </span>
+          <span className="stat-subtext">Since 00:00 UTC</span>
         </div>
+
         <div className="stat-card">
-          <span className="stat-label">Most Common Type</span>
+          <div className="stat-card-header">
+            <span className="stat-label">Most Common Category</span>
+            <div className="stat-icon-wrapper warning">⚠️</div>
+          </div>
           <span className="stat-value warning">
             {loading ? '—' : mostCommonType}
           </span>
+          <span className="stat-subtext">Highest recorded frequency</span>
         </div>
+
         <div className="stat-card">
-          <span className="stat-label">Total Logged (All Time)</span>
+          <div className="stat-card-header">
+            <span className="stat-label">Total Logged (All-Time)</span>
+            <div className="stat-icon-wrapper archive">🗄️</div>
+          </div>
           <span className="stat-value">
             {loading ? '—' : violations.length}
           </span>
+          <span className="stat-subtext">Persistent MongoDB records</span>
         </div>
       </div>
 
-      {/* Violation Breakdown Chart */}
+      {/* Violations by Type Analytical Chart */}
       <div className="chart-card">
-        <h3>Violations by Type</h3>
+        <div className="chart-header">
+          <h3>Incident Breakdown by Category</h3>
+          <span className="chart-subtitle">Aggregated distribution of logged non-compliance events</span>
+        </div>
+
         {loading ? (
           <div className="skeleton-chart">
             <div className="spinner" aria-label="Loading chart" />
-            <span>Loading analytics...</span>
+            <span>Loading category metrics...</span>
           </div>
         ) : chartData.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">📊</span>
-            <p>No violation data yet. Run the live monitor to start logging.</p>
+            <p>No violation data recorded yet. Incidents detected in the live monitor will appear here.</p>
           </div>
         ) : (
-          <div style={{ width: '100%', height: 240 }}>
-            <ResponsiveContainer>
-              <BarChart data={chartData} margin={{ top: 16, right: 16, left: -20, bottom: 4 }}>
-                <XAxis dataKey="name" stroke="#64748b" fontSize={11} tick={{ fill: '#94a3b8' }} />
-                <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} tick={{ fill: '#94a3b8' }} />
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 24, left: -10, bottom: 8 }}
+                barCategoryGap="25%"
+              >
+                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  stroke="#475569"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={{ stroke: '#1e293b' }}
+                  tick={{ fill: '#94a3b8', fontWeight: 500 }}
+                />
+                <YAxis
+                  stroke="#475569"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={{ stroke: '#1e293b' }}
+                  allowDecimals={false}
+                  tick={{ fill: '#94a3b8' }}
+                />
                 <Tooltip
+                  cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
                   contentStyle={{
-                    background: '#111726',
+                    background: '#0f172a',
                     border: '1px solid #334155',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     color: '#f8fafc',
                     fontSize: '13px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
                   }}
-                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                <Bar
+                  dataKey="count"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                >
                   {chartData.map((entry) => (
                     <Cell
                       key={entry.name}
@@ -157,10 +265,14 @@ export default function ViolationsDashboard() {
         )}
       </div>
 
-      {/* Violations Log Table */}
+      {/* Historical Violations Log Table */}
       <div className="table-card">
         <div className="table-header">
-          <h3>Violations Log</h3>
+          <div>
+            <h3>Security Incidents Log</h3>
+            <span className="table-subtitle">Auditable record of captured violations with snapshots</span>
+          </div>
+
           <div className="filter-controls">
             <select
               value={selectedType}
@@ -168,7 +280,7 @@ export default function ViolationsDashboard() {
               className="filter-select"
               aria-label="Filter by violation type"
             >
-              <option value="all">All Types</option>
+              <option value="all">All Categories</option>
               <option value="NO-Hardhat">NO-Hardhat</option>
               <option value="NO-Safety Vest">NO-Safety Vest</option>
               <option value="NO-Mask">NO-Mask</option>
@@ -187,12 +299,12 @@ export default function ViolationsDashboard() {
 
             {(selectedType !== 'all' || selectedDate !== '') && (
               <button onClick={clearFilters} className="clear-filters-btn">
-                Clear
+                ✕ Clear
               </button>
             )}
 
             <button onClick={fetchData} className="refresh-btn" aria-label="Refresh data">
-              ↺ Refresh
+              ↺ Refresh Log
             </button>
           </div>
         </div>
@@ -200,15 +312,15 @@ export default function ViolationsDashboard() {
         {loading ? (
           <div className="skeleton-table">
             <div className="spinner" aria-label="Loading records" />
-            <span>Fetching violation records...</span>
+            <span>Retrieving incident logs...</span>
           </div>
         ) : filteredViolations.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">🛡️</span>
             <p>
               {violations.length === 0
-                ? 'No violations have been recorded yet. Once the live monitor detects issues, they appear here.'
-                : 'No violations match the selected filters.'}
+                ? 'No safety violations logged yet. The monitor is running with full compliance.'
+                : 'No incidents match your current category or date filters.'}
             </p>
           </div>
         ) : (
@@ -217,52 +329,65 @@ export default function ViolationsDashboard() {
               <thead>
                 <tr>
                   <th>Snapshot</th>
-                  <th>Timestamp</th>
-                  <th>Violation Type</th>
-                  <th>Confidence</th>
+                  <th>Timestamp (UTC)</th>
+                  <th>Violation Category</th>
+                  <th>Model Confidence</th>
+                  <th>Resolution</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredViolations.map((v, idx) => (
-                  <tr key={v.id || idx}>
-                    <td>
-                      {v.snapshot_path ? (
-                        <img
-                          src={getSnapshotUrl(v.snapshot_path)}
-                          alt={`Snapshot: ${v.violation_type}`}
-                          className="thumbnail"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'inline'
-                          }}
-                        />
-                      ) : null}
-                      <span className="no-img" style={{ display: v.snapshot_path ? 'none' : 'inline' }}>
-                        No Image
-                      </span>
-                    </td>
-                    <td className="ts-cell">
-                      {v.timestamp ? new Date(v.timestamp).toLocaleString() : '—'}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge-type ${
-                          v.violation_type === 'restricted-zone-entry'
-                            ? 'zone'
-                            : v.violation_type?.startsWith('NO-')
-                            ? 'no-class'
-                            : ''
-                        }`}
-                      >
-                        {v.violation_type || 'unknown'}
-                      </span>
-                    </td>
-                    <td className="conf-text">
-                      {v.confidence != null ? `${(v.confidence * 100).toFixed(1)}%` : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {filteredViolations.map((v, idx) => {
+                  const badge = getViolationBadgeInfo(v.violation_type)
+                  return (
+                    <tr key={v.id || idx}>
+                      <td>
+                        {v.snapshot_path ? (
+                          <div
+                            className="thumbnail-wrapper"
+                            onClick={() => setActiveSnapshot(v)}
+                            title="Click to view full snapshot"
+                          >
+                            <img
+                              src={getSnapshotUrl(v.snapshot_path)}
+                              alt={`Incident: ${v.violation_type}`}
+                              className="thumbnail"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                                e.target.nextSibling.style.display = 'inline'
+                              }}
+                            />
+                            <span className="no-img" style={{ display: 'none' }}>
+                              No Preview
+                            </span>
+                            <span className="thumb-zoom-hint">🔍</span>
+                          </div>
+                        ) : (
+                          <span className="no-img">No Image</span>
+                        )}
+                      </td>
+                      <td className="ts-cell">
+                        {v.timestamp ? new Date(v.timestamp).toLocaleString() : '—'}
+                      </td>
+                      <td>
+                        <span className={`badge-type ${badge.className}`}>
+                          <span className="badge-icon">{badge.icon}</span>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="conf-cell">
+                        <span className="conf-value">
+                          {v.confidence != null ? `${(v.confidence * 100).toFixed(1)}%` : '—'}
+                        </span>
+                      </td>
+                      <td className="res-cell">
+                        <span className="res-tag">
+                          {v.frame_width ? `${v.frame_width}×${v.frame_height}` : '640×480'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
