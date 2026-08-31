@@ -41,7 +41,6 @@ async def detect_image(
     if zone:
         try:
             parsed = json.loads(zone)
-            # Accept both [[x,y],...] and [[x,y,z],...] formats — only use x,y
             if isinstance(parsed, list) and len(parsed) >= 3:
                 zone_points = [[float(pt[0]), float(pt[1])] for pt in parsed]
         except Exception as e:
