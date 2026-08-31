@@ -66,7 +66,6 @@ async def detect_image(
                 # Save the snapshot frame to disk
                 cv2.imwrite(str(snapshot_path), img)
 
-                # Store only the filename (not absolute path) for portability
                 v_doc = make_violation(
                     violation_type=vtype,
                     confidence=v["confidence"],
