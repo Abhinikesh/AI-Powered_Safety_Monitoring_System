@@ -1,7 +1,6 @@
 from datetime import datetime
 
 
-# Using plain dicts + pymongo instead of an ORM — simpler for this project size.
 def make_violation(
     violation_type: str,
     confidence: float,
