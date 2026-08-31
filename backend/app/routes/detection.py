@@ -59,7 +59,6 @@ async def detect_image(
         for v in violations:
             vtype = v["class_name"]
 
-            # Apply 3-second cooldown: don't spam MongoDB with duplicate logs
             if should_log_violation(vtype):
                 filename = f"{timestamp_str}_{vtype}_{uuid.uuid4().hex[:6]}.jpg"
                 snapshot_path = SNAPSHOT_DIR / filename
