@@ -1,6 +1,5 @@
 from datetime import datetime
 
-
 def make_violation(
     violation_type: str,
     confidence: float,
@@ -11,7 +10,7 @@ def make_violation(
 ) -> dict:
     return {
         "timestamp": timestamp or datetime.utcnow(),
-        "violation_type": violation_type,   # e.g. "no-helmet", "no-vest"
+        "violation_type": violation_type,  
         "confidence": round(confidence, 4),
         "snapshot_path": snapshot_path,
         "frame_width": frame_width,
